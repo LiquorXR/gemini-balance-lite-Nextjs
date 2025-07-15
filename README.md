@@ -46,8 +46,8 @@
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/LiquorXR/gemini-balance-lite-Nextjs.git
-    cd gemini-balance-lite-Nextjs
+    git clone https://github.com/LiquorXR/gemini-balance-lite-nextjs.git
+    cd gemini-balance-lite-nextjs
     ```
 2.  **安装依赖**
     ```bash
