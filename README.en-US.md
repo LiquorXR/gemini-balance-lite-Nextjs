@@ -45,8 +45,8 @@ Enter your proxy endpoint and API key(s) into any Gemini-compatible AI client.
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/LiquorXR/gemini-balance-lite-Nextjs.git
-    cd gemini-balance-lite-Nextjs
+    git clone https://github.com/LiquorXR/gemini-balance-lite-nextjs.git
+    cd gemini-balance-lite-nextjs
     ```
 2.  **Install dependencies**
     ```bash
