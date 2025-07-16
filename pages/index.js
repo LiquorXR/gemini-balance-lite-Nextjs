@@ -9,6 +9,8 @@ export default function HomePage() {
   const [isTesting, setIsTesting] = useState(false);
   const [testStatus, setTestStatus] = useState({});
   const [progress, setProgress] = useState(0);
+  const [checkKeysButtonText, setCheckKeysButtonText] = useState('Check Keys');
+  const [copyAllButtonText, setCopyAllButtonText] = useState('Copy All Available Keys');
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
@@ -33,7 +35,8 @@ export default function HomePage() {
   const checkApiConnectivity = async () => {
     const keys = apiKeys.replace(/,/g, '\n').split('\n').map(s => s.trim()).filter(Boolean);
     if (keys.length === 0) {
-      alert('Please enter at least one API key.');
+      setCheckKeysButtonText('Please enter at least one API key.');
+      setTimeout(() => setCheckKeysButtonText('Check Keys'), 2000);
       return;
     }
 
@@ -82,7 +85,8 @@ export default function HomePage() {
   const copyAllAvailable = () => {
     const text = availableKeys.join('\n');
     handleCopy(text, 'all');
-    alert(`Copied ${availableKeys.length} available API keys to clipboard!`);
+    setCopyAllButtonText(`Copied ${availableKeys.length} keys!`);
+    setTimeout(() => setCopyAllButtonText('Copy All Available Keys'), 2000);
   };
 
   return (
@@ -237,8 +241,8 @@ export default function HomePage() {
             value={apiKeys}
             onChange={(e) => setApiKeys(e.target.value)}
           />
-          <button onClick={checkApiConnectivity} disabled={isTesting}>
-            {isTesting ? 'Testing...' : 'Check Keys'}
+          <button onClick={checkApiConnectivity} disabled={isTesting || checkKeysButtonText !== 'Check Keys'}>
+            {isTesting ? 'Testing...' : checkKeysButtonText}
           </button>
 
           {isTesting && (
@@ -258,7 +262,7 @@ export default function HomePage() {
                 {availableKeys.map(key => <li key={key}>{key}</li>)}
               </ul>
               <div className="button-group">
-                <button onClick={copyAllAvailable}>Copy All Available Keys</button>
+                <button onClick={copyAllAvailable}>{copyAllButtonText}</button>
               </div>
             </div>
           )}
