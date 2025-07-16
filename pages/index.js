@@ -35,7 +35,7 @@ export default function HomePage() {
   const checkApiConnectivity = async () => {
     const keys = apiKeys.replace(/,/g, '\n').split('\n').map(s => s.trim()).filter(Boolean);
     if (keys.length === 0) {
-      setCheckKeysButtonText('Please enter at least one API key.');
+      setCheckKeysButtonText('Please enter at least one API key');
       setTimeout(() => setCheckKeysButtonText('Check Keys'), 2000);
       return;
     }
