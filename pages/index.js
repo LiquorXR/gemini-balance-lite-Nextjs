@@ -83,7 +83,7 @@ export default function HomePage() {
   };
   
   const copyAllAvailable = () => {
-    const text = availableKeys.join('\n');
+    const text = availableKeys.join(',');
     handleCopy(text, 'all');
     setCopyAllButtonText(`Copied ${availableKeys.length} keys!`);
     setTimeout(() => setCopyAllButtonText('Copy All Available Keys'), 2000);
