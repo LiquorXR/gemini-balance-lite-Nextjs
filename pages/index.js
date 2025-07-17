@@ -11,6 +11,7 @@ export default function HomePage() {
   const [progress, setProgress] = useState(0);
   const [checkKeysButtonText, setCheckKeysButtonText] = useState('Check Keys');
   const [copyAllButtonText, setCopyAllButtonText] = useState('Copy All Available Keys');
+  const [copiedStatus, setCopiedStatus] = useState({});
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
@@ -90,7 +91,22 @@ export default function HomePage() {
     setTimeout(() => setCopyAllButtonText('Copy All Available Keys'), 2000);
   };
 
-  return (
+  const handleCopyKey = (key) => {
+    navigator.clipboard.writeText(key).then(() => {
+      setCopiedStatus({ [key]: 'Copied!' });
+      setTimeout(() => {
+        setCopiedStatus(prev => ({ ...prev, [key]: undefined }));
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy key: ', err);
+      setCopiedStatus({ [key]: 'Failed!' });
+      setTimeout(() => {
+        setCopiedStatus(prev => ({ ...prev, [key]: undefined }));
+      }, 2000);
+    });
+  };
+ 
+   return (
     <>
       <Head>
         <title>Gemini API Proxy and Checker</title>
@@ -208,12 +224,26 @@ export default function HomePage() {
           padding: 0.5rem;
         }
         .status-list li {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
           padding: 0.5rem 0.75rem;
           border-bottom: 1px solid #e5e7eb;
           word-break: break-all;
         }
         .status-list li:last-child {
           border-bottom: none;
+        }
+        .status-list li.clickable-key {
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        .status-list li.clickable-key:hover {
+          background-color: #f9fafb;
+        }
+        .copy-status {
+          color: #16a34a;
+          font-weight: 500;
         }
         .button-group {
           display: flex;
@@ -269,7 +299,12 @@ export default function HomePage() {
             <div className="results-area">
               <h2>Available Keys ({availableKeys.length})</h2>
               <ul className="status-list">
-                {availableKeys.map(key => <li key={key}>{key}</li>)}
+                {availableKeys.map(key => (
+                  <li key={key} className="clickable-key" onClick={() => handleCopyKey(key)}>
+                    <span>{key}</span>
+                    {copiedStatus[key] && <span className="copy-status">{copiedStatus[key]}</span>}
+                  </li>
+                ))}
               </ul>
               <div className="button-group">
                 <button onClick={copyAllAvailable} className="copy-all-button">{copyAllButtonText}</button>
