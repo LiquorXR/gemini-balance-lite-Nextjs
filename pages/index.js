@@ -11,7 +11,6 @@ export default function HomePage() {
   const [progress, setProgress] = useState(0);
   const [checkKeysButtonText, setCheckKeysButtonText] = useState('Check Keys');
   const [copyAllButtonText, setCopyAllButtonText] = useState('Copy All Available Keys');
-  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
@@ -34,7 +33,8 @@ export default function HomePage() {
   };
 
   const checkApiConnectivity = async () => {
-    const keys = apiKeys.replace(/,/g, '\n').split('\n').map(s => s.trim()).filter(Boolean);
+    const initialKeys = apiKeys.replace(/,/g, '\n').split('\n').map(s => s.trim()).filter(Boolean);
+    const keys = [...new Set(initialKeys)];
     if (keys.length === 0) {
       setCheckKeysButtonText('Please enter at least one API key');
       setTimeout(() => setCheckKeysButtonText('Check Keys'), 2000);
@@ -89,20 +89,6 @@ export default function HomePage() {
     setCopyAllButtonText(`Copied ${availableKeys.length} keys!`);
     setTimeout(() => setCopyAllButtonText('Copy All Available Keys'), 2000);
   };
-
- const keysPerPage = 5;
- const totalPages = Math.ceil(availableKeys.length / keysPerPage);
- const startIndex = (currentPage - 1) * keysPerPage;
- const endIndex = startIndex + keysPerPage;
- const currentKeys = availableKeys.slice(startIndex, endIndex);
-
- const goToNextPage = () => {
-   setCurrentPage(prev => Math.min(prev + 1, totalPages));
- };
-
- const goToPreviousPage = () => {
-   setCurrentPage(prev => Math.max(prev - 1, 1));
- };
 
   return (
     <>
@@ -215,7 +201,7 @@ export default function HomePage() {
         .status-list {
           list-style-type: none;
           padding: 0;
-          max-height: 200px;
+          max-height: 300px;
           overflow-y: auto;
           border: 1px solid #e5e7eb;
           border-radius: 0.375rem;
@@ -235,12 +221,14 @@ export default function HomePage() {
           justify-content: center;
           margin-top: 1rem;
         }
-       .pagination {
-         display: flex;
-         justify-content: center;
-         align-items: center;
-         gap: 1rem;
-         margin-top: 1rem;
+       .copy-all-button {
+         background-color: #22c55e;
+       }
+       .copy-all-button:hover {
+         background-color: #16a34a;
+       }
+       .copy-all-button:active {
+         background-color: #15803d;
        }
       `}</style>
       <div className="container">
@@ -281,23 +269,10 @@ export default function HomePage() {
             <div className="results-area">
               <h2>Available Keys ({availableKeys.length})</h2>
               <ul className="status-list">
-                {currentKeys.map(key => <li key={key}>{key}</li>)}
+                {availableKeys.map(key => <li key={key}>{key}</li>)}
               </ul>
-              {totalPages > 1 && (
-               <div className="pagination">
-                 <button onClick={goToPreviousPage} disabled={currentPage === 1}>
-                   Previous
-                 </button>
-                 <span>
-                   Page {currentPage} of {totalPages}
-                 </span>
-                 <button onClick={goToNextPage} disabled={currentPage === totalPages}>
-                   Next
-                 </button>
-               </div>
-              )}
               <div className="button-group">
-                <button onClick={copyAllAvailable}>{copyAllButtonText}</button>
+                <button onClick={copyAllAvailable} className="copy-all-button">{copyAllButtonText}</button>
               </div>
             </div>
           )}
