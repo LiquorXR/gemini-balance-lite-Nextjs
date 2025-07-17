@@ -11,6 +11,7 @@ export default function HomePage() {
   const [progress, setProgress] = useState(0);
   const [checkKeysButtonText, setCheckKeysButtonText] = useState('Check Keys');
   const [copyAllButtonText, setCopyAllButtonText] = useState('Copy All Available Keys');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
@@ -88,6 +89,20 @@ export default function HomePage() {
     setCopyAllButtonText(`Copied ${availableKeys.length} keys!`);
     setTimeout(() => setCopyAllButtonText('Copy All Available Keys'), 2000);
   };
+
+ const keysPerPage = 5;
+ const totalPages = Math.ceil(availableKeys.length / keysPerPage);
+ const startIndex = (currentPage - 1) * keysPerPage;
+ const endIndex = startIndex + keysPerPage;
+ const currentKeys = availableKeys.slice(startIndex, endIndex);
+
+ const goToNextPage = () => {
+   setCurrentPage(prev => Math.min(prev + 1, totalPages));
+ };
+
+ const goToPreviousPage = () => {
+   setCurrentPage(prev => Math.max(prev - 1, 1));
+ };
 
   return (
     <>
@@ -220,6 +235,13 @@ export default function HomePage() {
           justify-content: center;
           margin-top: 1rem;
         }
+       .pagination {
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         gap: 1rem;
+         margin-top: 1rem;
+       }
       `}</style>
       <div className="container">
         <div className="card">
@@ -259,8 +281,21 @@ export default function HomePage() {
             <div className="results-area">
               <h2>Available Keys ({availableKeys.length})</h2>
               <ul className="status-list">
-                {availableKeys.map(key => <li key={key}>{key}</li>)}
+                {currentKeys.map(key => <li key={key}>{key}</li>)}
               </ul>
+              {totalPages > 1 && (
+               <div className="pagination">
+                 <button onClick={goToPreviousPage} disabled={currentPage === 1}>
+                   Previous
+                 </button>
+                 <span>
+                   Page {currentPage} of {totalPages}
+                 </span>
+                 <button onClick={goToNextPage} disabled={currentPage === totalPages}>
+                   Next
+                 </button>
+               </div>
+              )}
               <div className="button-group">
                 <button onClick={copyAllAvailable}>{copyAllButtonText}</button>
               </div>
