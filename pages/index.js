@@ -45,7 +45,7 @@ export default function HomePage() {
     setTestStatus(Object.fromEntries(keys.map(key => [key, 'Testing...'])));
     setProgress(0);
 
-    const checkUrl = `${apiUrl}/v1beta/models/gemini-2.0-flash-lite:generateContent`;
+    const checkUrl = `${apiUrl}/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent`;
     const totalKeys = keys.length;
     let completedCount = 0;
 
