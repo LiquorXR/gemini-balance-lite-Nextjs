@@ -22,27 +22,35 @@ export default async function handler(request) {
 
     let isOpenAIRequest = false;
     let isModelsRequest = false;
+    const authHeader = request.headers.get('authorization');
 
-    // Detect OpenAI "list models" request
-    if (request.method === 'GET' && /^\/(v1|v1beta)\/models$/.test(pathname) && request.headers.has('authorization')) {
+    // Distinguish between OpenAI-compatible and native Gemini requests.
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       isOpenAIRequest = true;
-      isModelsRequest = true;
-      pathname = '/v1beta/openai/models';
-      console.log(`OpenAI "list models" request detected. Path rewritten to: ${pathname}`);
-    } 
-    // Detect OpenAI "chat completions" request
-    else if (request.method === 'POST') {
-      // Must clone the request to read the body for detection
-      const clonedRequest = request.clone();
-      try {
-        const body = await clonedRequest.json();
-        if (body && Array.isArray(body.messages) && request.headers.has('authorization')) {
-          isOpenAIRequest = true;
-          pathname = '/v1beta/openai/chat/completions';
-          console.log(`OpenAI "chat completions" request detected. Path rewritten to: ${pathname}`);
+
+      // Detect OpenAI "list models" request
+      if (request.method === 'GET' && /^\/(v1|v1beta)\/models$/.test(pathname)) {
+        isModelsRequest = true;
+        pathname = '/v1beta/openai/models';
+        console.log(`OpenAI "list models" request detected. Path rewritten to: ${pathname}`);
+      }
+      // Detect OpenAI "chat completions" request
+      else if (request.method === 'POST') {
+        const clonedRequest = request.clone();
+        try {
+          const body = await clonedRequest.json();
+          if (body && Array.isArray(body.messages)) {
+            pathname = '/v1beta/openai/chat/completions';
+            console.log(`OpenAI "chat completions" request detected. Path rewritten to: ${pathname}`);
+          } else {
+            isOpenAIRequest = false; // Not a valid chat completions request
+          }
+        } catch (e) {
+          isOpenAIRequest = false; // Not a valid chat completions request
+          console.warn("Could not parse JSON from body, assuming native Gemini request.");
         }
-      } catch (e) {
-        console.warn("Could not parse JSON from body, assuming native Gemini request.");
+      } else {
+        isOpenAIRequest = false; // Unsupported OpenAI-style endpoint
       }
     }
 
@@ -57,9 +65,8 @@ export default async function handler(request) {
       headers.set('content-type', request.headers.get('content-type'));
     }
 
-    // Handle OpenAI-compatible requests (usually with a single Bearer token)
-    const authHeader = request.headers.get('authorization');
-    if (isOpenAIRequest && authHeader) {
+    // Handle OpenAI-compatible requests
+    if (isOpenAIRequest) {
       console.log("Forwarding OpenAI request with Authorization header.");
       headers.set('authorization', authHeader);
       
