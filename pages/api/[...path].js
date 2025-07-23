@@ -21,10 +21,12 @@ export default async function handler(request) {
 
     // 3. 智能判断请求类型 (OpenAI vs. Gemini)
     let isOpenAIRequest = false;
+    let isModelsRequest = false;
     
     // 检查是否为 OpenAI 的模型列表请求
     if (request.method === 'GET' && pathname.endsWith('/v1/models')) {
       isOpenAIRequest = true;
+      isModelsRequest = true;
       pathname = '/v1beta/openai/models';
       console.log(`检测到 OpenAI 模型列表请求，路径重写为: ${pathname}`);
     }
@@ -69,7 +71,37 @@ export default async function handler(request) {
         body: request.body,
         duplex: 'half',
       });
-      // 直接返回响应，不进行重试，因为 OpenAI 客户端通常只配置一个密钥
+
+      // 如果是模型列表请求，则需要修改响应体以移除 'models/' 前缀
+      if (isModelsRequest && response.ok) {
+        try {
+          const originalJson = await response.json();
+          if (originalJson.data && Array.isArray(originalJson.data)) {
+            originalJson.data.forEach(model => {
+              if (typeof model.id === 'string' && model.id.startsWith('models/')) {
+                model.id = model.id.substring(7); // 移除 "models/"
+              }
+            });
+          }
+          // 创建一个新的响应
+          const newHeaders = new Headers(response.headers);
+          newHeaders.set('content-length', JSON.stringify(originalJson).length.toString());
+          
+          console.log("成功修改模型列表响应，移除了 'models/' 前缀。");
+
+          return new Response(JSON.stringify(originalJson), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: newHeaders,
+          });
+        } catch (e) {
+          console.error("修改模型列表响应失败:", e);
+          // 如果修改失败，返回原始响应
+          return response;
+        }
+      }
+
+      // 对于其他请求（如聊天完成），直接返回原始响应
       return response;
     }
 
