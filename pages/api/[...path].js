@@ -91,7 +91,24 @@ function createGeminiToOpenAIStream() {
 export default async function handler(request) {
   const url = new URL(request.url);
 
-  // 路由 1: OpenAI 格式适配
+  // 路由 1: OpenAI 模型列表
+  if (url.pathname.endsWith('/v1/models')) {
+    console.log('接收到 OpenAI 模型列表请求。');
+    return new Response(JSON.stringify({
+      object: 'list',
+      data: [
+        { id: 'gemini-1.5-flash', object: 'model', created: Date.now(), owned_by: 'google' },
+        { id: 'gemini-1.5-pro', object: 'model', created: Date.now(), owned_by: 'google' },
+        { id: 'gemini-1.0-pro', object: 'model', created: Date.now(), owned_by: 'google' },
+        { id: 'text-embedding-004', object: 'model', created: Date.now(), owned_by: 'google' },
+      ],
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // 路由 2: OpenAI 格式适配
   if (url.pathname.endsWith('/v1/chat/completions')) {
     console.log('检测到 OpenAI 格式请求，启动适配模式。');
     try {
@@ -164,7 +181,7 @@ export default async function handler(request) {
     }
   }
 
-  // 路由 2: 原生 Gemini 透明代理 (默认)
+  // 路由 3: 原生 Gemini 透明代理 (默认)
   console.log('原生 Gemini 代理模式。');
   try {
     const pathname = url.pathname.replace(/^\/api/, '');
