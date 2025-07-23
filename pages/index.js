@@ -3,9 +3,7 @@ import Head from 'next/head';
 
 export default function HomePage() {
   const [apiUrl, setApiUrl] = useState('');
-  const [openaiApiUrl, setOpenaiApiUrl] = useState('');
   const [copyText, setCopyText] = useState('Copy');
-  const [copyOpenaiText, setOpenaiCopyText] = useState('Copy');
   const [apiKeys, setApiKeys] = useState('');
   const [availableKeys, setAvailableKeys] = useState([]);
   const [isTesting, setIsTesting] = useState(false);
@@ -17,29 +15,17 @@ export default function HomePage() {
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
-    const apiUrlBase = `${currentOrigin}/api`;
-    setApiUrl(apiUrlBase);
-    setOpenaiApiUrl(`${apiUrlBase}/v1beta/openai`);
+    setApiUrl(`${currentOrigin}/api`);
   }, []);
 
-  const handleCopy = (textToCopy, type) => {
+  const handleCopy = (textToCopy) => {
     navigator.clipboard.writeText(textToCopy).then(() => {
-      if (type === 'main') {
-        setCopyText('Copied!');
-        setTimeout(() => setCopyText('Copy'), 2000);
-      } else if (type === 'openai') {
-        setOpenaiCopyText('Copied!');
-        setTimeout(() => setOpenaiCopyText('Copy'), 2000);
-      }
+      setCopyText('Copied!');
+      setTimeout(() => setCopyText('Copy'), 2000);
     }).catch(err => {
       console.error('Failed to copy: ', err);
-      if (type === 'main') {
-        setCopyText('Failed!');
-        setTimeout(() => setCopyText('Copy'), 2000);
-      } else if (type === 'openai') {
-        setOpenaiCopyText('Failed!');
-        setTimeout(() => setOpenaiCopyText('Copy'), 2000);
-      }
+      setCopyText('Failed!');
+      setTimeout(() => setCopyText('Copy'), 2000);
     });
   };
 
@@ -57,7 +43,7 @@ export default function HomePage() {
     setTestStatus(Object.fromEntries(keys.map(key => [key, 'Testing...'])));
     setProgress(0);
 
-    const checkUrl = `${apiUrl}/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent`;
+    const checkUrl = `${apiUrl}/v1beta/models/gemini-pro:generateContent`;
     const totalKeys = keys.length;
     let completedCount = 0;
 
@@ -119,7 +105,7 @@ export default function HomePage() {
    return (
     <>
       <Head>
-        <title>Gemini API Proxy - OpenAI & Native Compatible</title>
+        <title>Universal Gemini API Proxy</title>
       </Head>
       <style jsx global>{`
         body {
@@ -282,28 +268,22 @@ export default function HomePage() {
       <div className="container">
         <div className="card">
           <h1>Universal Gemini API Proxy</h1>
-          <p>One endpoint for both OpenAI and native Gemini clients. Load balancing included.</p>
+          <p>A single, smart endpoint for both OpenAI and native Gemini clients. Features load balancing and automatic retries.</p>
           
-          <div className="endpoint-title">For OpenAI Clients (e.g., LobeChat, One API)</div>
-          <div className="url-container">
-            <span className="url-text">{openaiApiUrl || 'Loading...'}</span>
-            <button onClick={() => handleCopy(openaiApiUrl, 'openai')} disabled={!openaiApiUrl}>
-              {copyOpenaiText}
-            </button>
-          </div>
-
-          <div className="endpoint-title">For Native Gemini Clients</div>
           <div className="url-container">
             <span className="url-text">{apiUrl || 'Loading...'}</span>
-            <button onClick={() => handleCopy(apiUrl, 'main')} disabled={!apiUrl}>
+            <button onClick={() => handleCopy(apiUrl)} disabled={!apiUrl}>
               {copyText}
             </button>
           </div>
+          <p style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '-1rem' }}>
+            Use this URL as the `baseURL` in your OpenAI client or as the endpoint for your native Gemini client.
+          </p>
         </div>
 
         <div className="card">
           <h1>Gemini API Key Checker</h1>
-          <p>Enter your Gemini API keys (one per line or comma-separated) to check their validity. The proxy will load-balance across all valid keys.</p>
+          <p>Enter your Gemini API keys (one per line or comma-separated). The proxy will intelligently load-balance across all valid keys provided.</p>
           <textarea
             placeholder="AIzaSy...&#10;AIzaSy..."
             value={apiKeys}
