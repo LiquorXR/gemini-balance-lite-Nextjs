@@ -24,7 +24,7 @@ export default async function handler(request) {
     let isModelsRequest = false;
 
     // Detect OpenAI "list models" request
-    if (request.method === 'GET' && /^\/(v1|v1beta)\/models$/.test(pathname)) {
+    if (request.method === 'GET' && /^\/(v1|v1beta)\/models$/.test(pathname) && request.headers.has('authorization')) {
       isOpenAIRequest = true;
       isModelsRequest = true;
       pathname = '/v1beta/openai/models';
@@ -36,7 +36,7 @@ export default async function handler(request) {
       const clonedRequest = request.clone();
       try {
         const body = await clonedRequest.json();
-        if (body && Array.isArray(body.messages)) {
+        if (body && Array.isArray(body.messages) && request.headers.has('authorization')) {
           isOpenAIRequest = true;
           pathname = '/v1beta/openai/chat/completions';
           console.log(`OpenAI "chat completions" request detected. Path rewritten to: ${pathname}`);
