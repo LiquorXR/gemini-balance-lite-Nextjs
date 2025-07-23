@@ -42,23 +42,34 @@ function convertOpenAIMessagesToGemini(messages) {
  * @returns {TransformStream}
  */
 function createGeminiToOpenAIStream() {
-  const sseRegex = /^data: (.*)\s*$/gm;
   let buffer = '';
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
 
   return new TransformStream({
-    async transform(chunk, controller) {
+    transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
-      let match;
-      while ((match = sseRegex.exec(buffer)) !== null) {
+      
+      // 查找完整的 SSE 消息 (以 \n\n 结尾)
+      const messages = buffer.split('\n\n');
+      
+      // 保留最后一个不完整的消息到缓冲区
+      buffer = messages.pop() || '';
+
+      for (const message of messages) {
+        if (!message.startsWith('data: ')) {
+          continue;
+        }
+
+        const data = message.substring(6); // 移除 "data: "
+        
+        if (data === '[DONE]') {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          return;
+        }
+
         try {
-          if (match[1] === '[DONE]') {
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-            return;
-          }
-          
-          const geminiChunk = JSON.parse(match[1]);
+          const geminiChunk = JSON.parse(data);
           const text = geminiChunk?.candidates?.[0]?.content?.parts?.[0]?.text || '';
           
           if (text) {
@@ -76,11 +87,9 @@ function createGeminiToOpenAIStream() {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
           }
         } catch (e) {
-          console.error('转换流中解析JSON失败:', match[1], e);
+          console.error('转换流中解析JSON失败:', data, e);
         }
       }
-      buffer = buffer.slice(sseRegex.lastIndex);
-      sseRegex.lastIndex = 0;
     },
   });
 }
@@ -93,19 +102,40 @@ export default async function handler(request) {
 
   // 路由 1: OpenAI 模型列表
   if (url.pathname.endsWith('/v1/models')) {
-    console.log('接收到 OpenAI 模型列表请求。');
-    return new Response(JSON.stringify({
-      object: 'list',
-      data: [
-        { id: 'gemini-1.5-flash', object: 'model', created: Date.now(), owned_by: 'google' },
-        { id: 'gemini-1.5-pro', object: 'model', created: Date.now(), owned_by: 'google' },
-        { id: 'gemini-1.0-pro', object: 'model', created: Date.now(), owned_by: 'google' },
-        { id: 'text-embedding-004', object: 'model', created: Date.now(), owned_by: 'google' },
-      ],
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.log('接收到 OpenAI 模型列表请求，正在从 Google API 获取...');
+    try {
+      const modelsResponse = await fetchWithRetry('https://generativelanguage.googleapis.com/v1beta/models', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }, request.headers);
+
+      if (!modelsResponse.ok) {
+        return modelsResponse; // 直接返回错误响应
+      }
+
+      const geminiModels = await modelsResponse.json();
+      const openAIModels = {
+        object: 'list',
+        data: geminiModels.models
+          .filter(m => m.supportedGenerationMethods.includes("generateContent"))
+          .map(m => ({
+            id: m.name.replace(/^models\//, ''),
+            object: 'model',
+            created: Date.now(),
+            owned_by: 'google',
+          })),
+      };
+
+      return new Response(JSON.stringify(openAIModels), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      console.error('获取模型列表时出错:', error);
+      return new Response(JSON.stringify({ error: '获取模型列表时出错: ' + error.message }), { status: 500 });
+    }
   }
 
   // 路由 2: OpenAI 格式适配
