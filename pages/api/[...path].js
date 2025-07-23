@@ -55,22 +55,34 @@ export default async function handler(request) {
       headers.set('content-type', request.headers.get('content-type'));
     }
 
-    // 6. 处理 API 密钥 (支持 'Authorization' 和 'x-goog-api-key')
-    let apiKeys = [];
+    // 6. 处理 API 密钥
     const authHeader = request.headers.get('authorization');
+    
+    // 对于 OpenAI 兼容请求，优先使用并直接透传 Authorization 头
+    if (isOpenAIRequest && authHeader) {
+      console.log("检测到 OpenAI 请求并发现 Authorization 头，将直接透传。");
+      headers.set('authorization', authHeader);
+      const response = await fetch(targetUrl, {
+        method: request.method,
+        headers: headers,
+        body: request.body,
+        duplex: 'half',
+      });
+      // 直接返回响应，不进行重试，因为 OpenAI 客户端通常只配置一个密钥
+      return response;
+    }
+
+    // 对于原生 Gemini 请求或没有 Authorization 头的 OpenAI 请求，
+    // 使用 x-goog-api-key 进行负载均衡和重试。
     const apiKeyHeader = request.headers.get('x-goog-api-key');
-
-    if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      if (token) apiKeys.push(token);
+    if (!apiKeyHeader) {
+      const errorMsg = "对于原生 Gemini 请求，必须提供 'x-goog-api-key' 请求头。";
+      return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
-    if (apiKeyHeader) {
-      apiKeys.push(...apiKeyHeader.split(',').map(k => k.trim()).filter(k => k));
-    }
-    apiKeys = [...new Set(apiKeys)]; // 去重
 
+    const apiKeys = [...new Set(apiKeyHeader.split(',').map(k => k.trim()).filter(k => k))];
     if (apiKeys.length === 0) {
-      const errorMsg = "请求中未提供 API 密钥。请在 'Authorization' (Bearer token) 或 'x-goog-api-key' 请求头中提供密钥。";
+      const errorMsg = "'x-goog-api-key' 请求头中未提供任何有效的 API 密钥。";
       return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -86,7 +98,7 @@ export default async function handler(request) {
     // 8. 遍历密钥并尝试请求，失败时重试。
     for (const key of apiKeys) {
       headers.set('x-goog-api-key', key);
-      console.log(`尝试使用密钥: ...${key.slice(-4)}`);
+      console.log(`尝试使用原生 Gemini 密钥: ...${key.slice(-4)}`);
 
       try {
         const response = await fetch(targetUrl, {
