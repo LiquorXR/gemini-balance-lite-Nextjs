@@ -50,20 +50,17 @@ function createGeminiToOpenAIStream() {
     transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
       
-      // 查找完整的 SSE 消息 (以 \n\n 结尾)
-      const messages = buffer.split('\n\n');
-      
-      // 保留最后一个不完整的消息到缓冲区
-      buffer = messages.pop() || '';
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-      for (const message of messages) {
-        if (!message.startsWith('data: ')) {
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) {
           continue;
         }
 
-        const data = message.substring(6); // 移除 "data: "
+        const data = line.substring(6);
         
-        if (data === '[DONE]') {
+        if (data.trim() === '[DONE]') {
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           return;
         }
@@ -87,7 +84,7 @@ function createGeminiToOpenAIStream() {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
           }
         } catch (e) {
-          console.error('转换流中解析JSON失败:', data, e);
+          // 忽略不完整的JSON
         }
       }
     },
