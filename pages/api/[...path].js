@@ -26,6 +26,9 @@ export default async function handler(request) {
     // 3. 为出站请求创建新的请求头。
     const headers = new Headers();
     
+    // 设置固定的 User-Agent
+    headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) CherryStudio/1.5.1 Chrome/134.0.6998.205 Electron/35.6.0 Safari/537.36');
+
     // 从原始请求中复制 'Content-Type'。
     if (request.headers.has('content-type')) {
       headers.set('content-type', request.headers.get('content-type'));

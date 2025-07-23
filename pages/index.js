@@ -15,7 +15,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
-    setApiUrl(`${currentOrigin}/api`);
+    setApiUrl(currentOrigin);
   }, []);
 
   const handleCopy = (textToCopy, type) => {
