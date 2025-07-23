@@ -1,5 +1,24 @@
 {
+  "name": "gemini-balance-lite-nextjs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Next.js application that proxies requests to the Google Gemini API with load balancing.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.4.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
   "devDependencies": {
-    "wrangler": "^4.23.0"
+    "@eslint/js": "^9.31.0",
+    "eslint": "^9.31.0",
+    "eslint-config-next": "latest",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.3.0"
   }
 }
