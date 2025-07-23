@@ -15,6 +15,7 @@ export default async function handler(request) {
     // 我们需要移除它以避免向目标 API 发送格式错误的 URL。
     const searchParams = new URLSearchParams(url.search);
     searchParams.delete('path');
+    searchParams.delete('key'); // 移除客户端可能意外传入的 'key' 参数
     const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
     console.log(`传入请求: ${url.pathname}${url.search}`);
