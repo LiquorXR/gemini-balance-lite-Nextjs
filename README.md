@@ -1,63 +1,186 @@
-# Gemini Balance Lite (Next.js 版)
+# Gemini Balance Lite
+# Gemini API 代理和负载均衡无服务器轻量版（边缘函数）
 
-[English Version](README.en-US.md)
----
+### 作者：技术爬爬虾
+[B站](https://space.bilibili.com/316183842)，[Youtube](https://www.youtube.com/@Tech_Shrimp)，抖音，公众号 全网同名。转载请注明作者。
+
 
 ## 项目简介
 
-本项目是一个为 Google Gemini API 设计的代理服务，基于 Next.js 构建，并已为 Vercel 平台优化。它可以帮助您：
-- **中转 API 请求**: 在无法直连 Google API 的网络环境中，提供稳定的中转服务。
-- **实现负载均衡**: 通过聚合多个 Gemini API Key，并在每次请求时随机选用一个，从而有效分摊请求压力，突破免费额度限制。
-- **兼容 OpenAI 格式**: 智能识别并转换 OpenAI API 格式的请求，让您可以无缝对接 LobeChat、One API 等广受欢迎的第三方工具生态。
+Gemini API 代理, 使用边缘函数把Gemini API免费中转到国内。还可以聚合多个Gemini API Key，随机选取API Key的使用实现负载均衡，使得Gemini API免费成倍增加。
 
-## Vercel 部署 (推荐)
+## Vercel部署(推荐)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/tech-shrimp/gemini-balance-lite)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftech-shrimp%2Fgemini-balance-lite&project-name=gemini-balance-lite-nextjs&repository-name=gemini-balance-lite-nextjs)
 
-<br>点击上方按钮，使用您的 GitHub 账户登录，即可一键部署。
+1. 点击部署按钮⬆️一键部署。
+2. 国内使用需要配置自定义域名
+    <details>
+    <summary>配置自定义域名：</summary>
 
-## 配置自定义域名 (重要)
+    ![image](/docs/images/5.png)
+    </details>
+3. 去[AIStudio](https://aistudio.google.com)申请一个免费Gemini API Key
+<br>将API Key与自定义的域名填入AI客户端即可使用，如果有多个API Key用逗号分隔
+    <details>
+    <summary>以Cherry Studio为例：</summary>
 
-**为了确保在中国大陆地区的稳定访问，强烈建议配置您自己的域名。** Vercel 分配的 `.vercel.app` 域名可能会遇到访问性问题。
+    ![image](/docs/images/2.png)
+    </details>
 
-配置步骤如下：
-1.  在 Vercel 的项目仪表盘中，进入 **Settings** -> **Domains**。
-2.  输入你自己的域名并添加。
-3.  根据 Vercel 提供的指引（通常是添加一个 `A` 记录或 `CNAME` 记录），在你的域名注册商（如 GoDaddy, Cloudflare 等）后台完成 DNS 配置。
-4.  等待 DNS 生效后，Vercel 会自动完成验证和 SSL 证书配置。
 
-## 如何使用
 
-#### 1. 获取代理域名
-部署并配置好自定义域名后，你的代理地址就是 `https://<你的自定义域名>`。
 
-项目首页会自动生成当前可用的代理地址，并提供一键复制功能。
+## Deno部署
 
-#### 2. 获取 Gemini API Key
-前往 [Google AI Studio](https://aistudio.google.com) 申请一个或多个免费的 Gemini API Key。
+1. [fork](https://github.com/tech-shrimp/gemini-balance-lite/fork)本项目
+2. 登录/注册 https://dash.deno.com/
+3. 创建项目 https://dash.deno.com/new_project
+4. 选择此项目，填写项目名字（请仔细填写项目名字，关系到自动分配的域名）
+5. Entrypoint 填写 `src/deno_index.ts` 其他字段留空 
+   <details>
+   <summary>如图</summary>
+   
+   ![image](/docs/images/3.png)
+   </details>
+6. 点击 <b>Deploy Project</b>
+7. 部署成功后获得域名
+8. 国内使用需要配置自定义域名
+9. 去[AIStudio](https://aistudio.google.com)申请一个免费Gemini API Key
+10. 将API Key与分配的域名填入AI客户端即可使用，如果有多个API Key用逗号分隔
 
-#### 3. 配置客户端
-将您的代理地址和 API Key 填入任意支持 Gemini 或 OpenAI 格式的 AI 客户端即可。
+<details>
+<summary>以Cherry Studio为例：</summary>
 
--   **API 端点 / Base URL**: `https://<你的自定义域名>`
--   **API 密钥**: 填入您的 **Gemini API Key**。
-    -   对于原生 Gemini 客户端，请将密钥填入对应的字段，多个密钥可用英文逗号 `,` 分隔。
-    -   对于 OpenAI 格式的客户端，请在 `API Key` 字段中填入**单个** Gemini API Key (通常以 `Bearer ` 前缀的形式，但大部分客户端会自动处理)。
+![image](/docs/images/2.png)
+</details>
+
+
+## Cloudflare Worker 部署
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tech-shrimp/gemini-balance-lite)
+
+0. CF Worker有可能会分配香港的CDN节点导致无法使用(Gemini不允许香港IP连接)
+0. 广东地区不建议使用Cloudflare Worker 部署
+1. 点击部署按钮
+2. 登录Cloudflare账号
+3. 链接Github账户，部署
+4. 打开dash.cloudflare.com，查看部署后的worker
+6. 国内使用需要配置自定义域名
+<details>
+<summary>配置自定义域名：</summary>
+
+![image](/docs/images/4.png)
+</details>
+
+
+## Netlify部署
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/tech-shrimp/gemini-balance-lite)
+<br>点击部署按钮，登录Github账户即可
+<br>免费分配域名，国内可直连。
+<br>但是不稳定
+
+<details>
+<summary>将分配的域名复制下来，如图：</summary>
+
+![image](/docs/images/1.png)
+</details>
+
+去[AIStudio](https://aistudio.google.com)申请一个免费Gemini API Key
+<br>将API Key与分配的域名填入AI客户端即可使用，如果有多个API Key用逗号分隔
+
+<details>
+<summary>以Cherry Studio为例：</summary>
+
+![image](/docs/images/2.png)
+</details>
+
+
+
+## 打赏
+#### 帮忙点点关注点点赞，谢谢啦~
+B站：[https://space.bilibili.com/316183842](https://space.bilibili.com/316183842)<br>
+Youtube: [https://www.youtube.com/@Tech_Shrimp](https://www.youtube.com/@Tech_Shrimp)
 
 
 ## 本地调试
 
-1.  **克隆仓库**
-    ```bash
-    git clone https://github.com/LiquorXR/gemini-balance-lite-nextjs.git
-    cd gemini-balance-lite-nextjs
-    ```
-2.  **安装依赖**
-    ```bash
-    npm install
-    ```
-3.  **启动开发服务器**
-    ```bash
-    npm run dev
-    ```
-    应用将在 `http://localhost:3000` 上运行。
+1. 安装NodeJs
+2. npm install -g vercel
+3. cd 项目根目录
+4. vercel dev
+
+## API 说明
+
+
+### Gemini 代理
+
+可以使用 Gemini 的原生 API 格式进行代理请求。
+**Curl 示例:**
+```bash
+curl --location 'https://<YOUR_DEPLOYED_DOMAIN>/v1beta/models/gemini-2.5-pro:generateContent' \
+--header 'Content-Type: application/json' \
+--header 'x-goog-api-key: <YOUR_GEMINI_API_KEY_1>,<YOUR_GEMINI_API_KEY_2>' \
+--data '{
+    "contents": [
+        {
+         "role": "user",
+         "parts": [
+            {
+               "text": "Hello"
+            }
+         ]
+      }
+    ]
+}'
+```
+**Curl 示例:（流式）**
+```bash
+curl --location 'https://<YOUR_DEPLOYED_DOMAIN>/v1beta/models/gemini-2.5-pro:generateContent?alt=sse' \
+--header 'Content-Type: application/json' \
+--header 'x-goog-api-key: <YOUR_GEMINI_API_KEY_1>,<YOUR_GEMINI_API_KEY_2>' \
+--data '{
+    "contents": [
+        {
+         "role": "user",
+         "parts": [
+            {
+               "text": "Hello"
+            }
+         ]
+      }
+    ]
+}'
+```
+> 注意: 请将 `<YOUR_DEPLOYED_DOMAIN>` 替换为你的部署域名，并将 `<YOUR_GEMINI_API_KEY>` 替换为你的 Gemini API Ke，如果有多个用逗号分隔
+
+
+### API Key 校验
+
+可以通过向 `/verify` 端点发送请求来校验你的 API Key 是否有效。可以一次性校验多个 Key，用逗号隔开。
+
+**Curl 示例:**
+```bash
+curl --location 'https://<YOUR_DEPLOYED_DOMAIN>/verify' \
+--header 'x-goog-api-key: <YOUR_GEMINI_API_KEY_1>,<YOUR_GEMINI_API_KEY_2>'
+```
+
+### OpenAI 格式
+
+本项目兼容 OpenAI 的 API 格式，你可以通过 `/chat` 或 `/chat/completions` 端点来发送请求。
+
+**Curl 示例:**
+```bash
+curl --location 'https://<YOUR_DEPLOYED_DOMAIN>/chat/completions' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <YOUR_GEMINI_API_KEY>' \
+--data '{
+    "model": "gpt-3.5-turbo",
+    "messages": [
+        {
+            "role": "user",
+            "content": "你好"
+        }
+    ]
+}'
+```
+
