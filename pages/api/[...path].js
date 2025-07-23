@@ -24,7 +24,7 @@ export default async function handler(request) {
     let isModelsRequest = false;
 
     // Detect OpenAI "list models" request
-    if (request.method === 'GET' && pathname.endsWith('/v1/models')) {
+    if (request.method === 'GET' && /^\/(v1|v1beta)\/models$/.test(pathname)) {
       isOpenAIRequest = true;
       isModelsRequest = true;
       pathname = '/v1beta/openai/models';
