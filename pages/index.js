@@ -3,7 +3,9 @@ import Head from 'next/head';
 
 export default function HomePage() {
   const [apiUrl, setApiUrl] = useState('');
+  const [openaiApiUrl, setOpenaiApiUrl] = useState('');
   const [copyText, setCopyText] = useState('Copy');
+  const [copyOpenaiText, setOpenaiCopyText] = useState('Copy');
   const [apiKeys, setApiKeys] = useState('');
   const [availableKeys, setAvailableKeys] = useState([]);
   const [isTesting, setIsTesting] = useState(false);
@@ -15,7 +17,9 @@ export default function HomePage() {
 
   useEffect(() => {
     const currentOrigin = window.location.origin;
-    setApiUrl(`${currentOrigin}/api`);
+    const apiUrlBase = `${currentOrigin}/api`;
+    setApiUrl(apiUrlBase);
+    setOpenaiApiUrl(`${apiUrlBase}/v1beta/openai`);
   }, []);
 
   const handleCopy = (textToCopy, type) => {
@@ -23,12 +27,18 @@ export default function HomePage() {
       if (type === 'main') {
         setCopyText('Copied!');
         setTimeout(() => setCopyText('Copy'), 2000);
+      } else if (type === 'openai') {
+        setOpenaiCopyText('Copied!');
+        setTimeout(() => setOpenaiCopyText('Copy'), 2000);
       }
     }).catch(err => {
       console.error('Failed to copy: ', err);
       if (type === 'main') {
         setCopyText('Failed!');
         setTimeout(() => setCopyText('Copy'), 2000);
+      } else if (type === 'openai') {
+        setOpenaiCopyText('Failed!');
+        setTimeout(() => setOpenaiCopyText('Copy'), 2000);
       }
     });
   };
@@ -109,7 +119,7 @@ export default function HomePage() {
    return (
     <>
       <Head>
-        <title>Gemini API Proxy and Checker</title>
+        <title>Gemini API Proxy - OpenAI & Native Compatible</title>
       </Head>
       <style jsx global>{`
         body {
@@ -153,6 +163,7 @@ export default function HomePage() {
           font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
           font-size: 1rem;
           word-break: break-all;
+          margin-bottom: 1rem;
         }
         .url-text {
           flex-grow: 1;
@@ -260,11 +271,28 @@ export default function HomePage() {
        .copy-all-button:active {
          background-color: #15803d;
        }
+       .endpoint-title {
+          font-weight: 500;
+          font-size: 0.9rem;
+          color: #4b5563;
+          margin-bottom: 0.5rem;
+          text-align: left;
+       }
       `}</style>
       <div className="container">
         <div className="card">
-          <h1>Your Gemini API Proxy Endpoint</h1>
-          <p>Use the URL below in your AI client to route requests through this proxy.</p>
+          <h1>Universal Gemini API Proxy</h1>
+          <p>One endpoint for both OpenAI and native Gemini clients. Load balancing included.</p>
+          
+          <div className="endpoint-title">For OpenAI Clients (e.g., LobeChat, One API)</div>
+          <div className="url-container">
+            <span className="url-text">{openaiApiUrl || 'Loading...'}</span>
+            <button onClick={() => handleCopy(openaiApiUrl, 'openai')} disabled={!openaiApiUrl}>
+              {copyOpenaiText}
+            </button>
+          </div>
+
+          <div className="endpoint-title">For Native Gemini Clients</div>
           <div className="url-container">
             <span className="url-text">{apiUrl || 'Loading...'}</span>
             <button onClick={() => handleCopy(apiUrl, 'main')} disabled={!apiUrl}>
@@ -275,7 +303,7 @@ export default function HomePage() {
 
         <div className="card">
           <h1>Gemini API Key Checker</h1>
-          <p>Enter your Gemini API keys below (one per line) to check their validity.</p>
+          <p>Enter your Gemini API keys (one per line or comma-separated) to check their validity. The proxy will load-balance across all valid keys.</p>
           <textarea
             placeholder="AIzaSy...&#10;AIzaSy..."
             value={apiKeys}

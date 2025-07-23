@@ -40,3 +40,5 @@ yarn-error.log*
 
 # Turbo
 .turbo
+# Documentation files
+openai.md

@@ -19,9 +19,13 @@ export default async function handler(request) {
 
     console.log(`传入请求: ${url.pathname}${url.search}`);
 
-    // 2. 构建目标 Google Gemini API 的 URL。
-    const targetUrl = `https://generativelanguage.googleapis.com${pathname}${search}`;
+    // 2. 检查是 OpenAI 兼容请求还是原生 Gemini 请求
+    const isOpenAIRequest = pathname.includes('/openai/');
+    const targetDomain = 'https://generativelanguage.googleapis.com';
+    const targetUrl = `${targetDomain}${pathname}${search}`;
+    
     console.log(`目标 URL: ${targetUrl}`);
+    console.log(`请求类型: ${isOpenAIRequest ? 'OpenAI 兼容模式' : '原生 Gemini'}`);
 
     // 3. 为出站请求创建新的请求头。
     const headers = new Headers();
@@ -31,15 +35,30 @@ export default async function handler(request) {
       headers.set('content-type', request.headers.get('content-type'));
     }
 
-    // 4. 处理用于负载均衡和重试的 'x-goog-api-key'。
+    // 4. 处理 API 密钥。
+    // OpenAI SDK 通常通过 'Authorization' 头发送密钥。
+    // 我们也支持 'x-goog-api-key' 以保持向后兼容并支持多密钥。
+    let apiKeys = [];
+    const authHeader = request.headers.get('authorization');
     const apiKeyHeader = request.headers.get('x-goog-api-key');
-    if (!apiKeyHeader) {
-      return new Response(JSON.stringify({ error: "缺少 'x-goog-api-key' 请求头。" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      if (token) {
+        apiKeys.push(token);
+      }
     }
 
-    const apiKeys = apiKeyHeader.split(',').map(k => k.trim()).filter(k => k);
+    if (apiKeyHeader) {
+      apiKeys.push(...apiKeyHeader.split(',').map(k => k.trim()).filter(k => k));
+    }
+    
+    // 去重
+    apiKeys = [...new Set(apiKeys)];
+
     if (apiKeys.length === 0) {
-      return new Response(JSON.stringify({ error: "'x-goog-api-key' 请求头中未提供任何 API 密钥。" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      const errorMsg = "请求中未提供 API 密钥。请在 'Authorization' (Bearer token) 或 'x-goog-api-key' 请求头中提供密钥。";
+      return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     // 随机打乱密钥以确保随机性并分配负载。
