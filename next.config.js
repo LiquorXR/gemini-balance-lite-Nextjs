@@ -10,8 +10,8 @@ const nextConfig = {
       {
         // Match paths like /v1/models, /v1beta/models, etc.
         // and proxy them to the /api handler.
-        source: '/:path(v1|v1beta.*)',
-        destination: '/api/:path',
+        source: '/:version(v1|v1beta)/:path*',
+        destination: '/api/:version/:path*',
       },
     ];
   },

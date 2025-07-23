@@ -10,7 +10,10 @@ export const config = {
 export default async function handler(request) {
   try {
     const url = new URL(request.url);
-    let pathname = url.pathname.replace(/^\/api/, '');
+    let pathname = url.pathname;
+    if (pathname.startsWith('/api')) {
+      pathname = pathname.substring(4);
+    }
     const searchParams = new URLSearchParams(url.search);
     searchParams.delete('path'); // Clean up potential redundant path parameter
     const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
