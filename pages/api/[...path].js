@@ -11,12 +11,17 @@ export default async function handler(request) {
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/^\/api/, ''); // 移除 /api 前缀
     
-    // 客户端可能会添加一个重复路径的 'path' 查询参数。
-    // 我们需要移除它以避免向目标 API 发送格式错误的 URL。
-    const searchParams = new URLSearchParams(url.search);
-    searchParams.delete('path');
-    searchParams.delete('key'); // 移除客户端可能意外传入的 'key' 参数
-    const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    // 客户端可能会添加一个重复路径的 'path' 查询参数或 API 密钥 'key'。
+    // 我们需要移除它们以避免向目标 API 发送格式错误的 URL 或使用无效的密钥。
+    // 我们通过重建一个新的 URLSearchParams 来实现，忽略任何大小写形式的 'path' 或 'key'。
+    const originalSearchParams = new URLSearchParams(url.search);
+    const newSearchParams = new URLSearchParams();
+    for (const [param, value] of originalSearchParams.entries()) {
+      if (param.toLowerCase() !== 'path' && param.toLowerCase() !== 'key') {
+        newSearchParams.append(param, value);
+      }
+    }
+    const search = newSearchParams.toString() ? `?${newSearchParams.toString()}` : '';
 
     console.log(`传入请求: ${url.pathname}${url.search}`);
 
