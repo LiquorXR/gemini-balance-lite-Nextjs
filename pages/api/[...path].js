@@ -20,26 +20,27 @@ export default async function handler(request) {
     console.log(`传入请求: ${url.pathname}${url.search}`);
 
     // 3. 智能判断请求类型 (OpenAI vs. Gemini)
-    let isPostRequest = request.method === 'POST';
     let isOpenAIRequest = false;
-    if (isPostRequest) {
+    
+    // 检查是否为 OpenAI 的模型列表请求
+    if (request.method === 'GET' && pathname.endsWith('/v1/models')) {
+      isOpenAIRequest = true;
+      pathname = '/v1beta/openai/models';
+      console.log(`检测到 OpenAI 模型列表请求，路径重写为: ${pathname}`);
+    }
+    // 检查是否为 OpenAI 的聊天完成请求
+    else if (request.method === 'POST') {
       try {
         const body = await clonedRequest.json();
-        // OpenAI 请求体通常包含 'messages' 字段
         if (body && Array.isArray(body.messages)) {
           isOpenAIRequest = true;
+          // 这是一个常见的 OpenAI 端点，可以根据需要扩展
+          pathname = '/v1beta/openai/chat/completions';
+          console.log(`检测到 OpenAI 聊天完成请求，路径重写为: ${pathname}`);
         }
       } catch (e) {
-        // 如果 JSON 解析失败，则假定为非 OpenAI 请求
         console.warn("无法解析请求体 JSON，假定为原生 Gemini 请求。");
       }
-    }
-    
-    // 如果是 OpenAI 请求，则重写路径以指向兼容端点
-    if (isOpenAIRequest) {
-      // 这是一个常见的 OpenAI 端点，可以根据需要扩展
-      pathname = '/v1beta/openai/chat/completions';
-      console.log(`检测到 OpenAI 兼容请求，路径重写为: ${pathname}`);
     }
 
     // 4. 构建目标 Google Gemini API 的 URL。
