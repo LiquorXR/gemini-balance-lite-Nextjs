@@ -29,7 +29,7 @@ Follow these steps:
 ## How to Use
 
 #### 1. Get Your Proxy Domain
-After deploying and configuring your custom domain, your proxy endpoint will be `https://<your-custom-domain>/api`.
+After deploying and configuring your custom domain, your proxy endpoint will be `https://<your-custom-domain>`.
 
 The project's homepage will automatically generate the currently available proxy URL and provide a copy button for your convenience.
 
@@ -39,7 +39,7 @@ Go to [Google AI Studio](https://aistudio.google.com) to obtain one or more free
 #### 3. Configure Your Client
 Enter your proxy endpoint and API key(s) into any AI client that supports either the Gemini or OpenAI format.
 
--   **API Endpoint / Base URL**: `https://<your-custom-domain>/api`
+-   **API Endpoint / Base URL**: `https://<your-custom-domain>`
 -   **API Key**: Your **Gemini API Key**.
     -   For native Gemini clients, enter your key(s) in the appropriate field. Multiple keys can be separated by a comma `,`.
     -   For OpenAI-format clients, enter a **single** Gemini API Key in the `API Key` field (often as a `Bearer` token, which most clients handle automatically).
