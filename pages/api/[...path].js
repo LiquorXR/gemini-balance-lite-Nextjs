@@ -1,9 +1,8 @@
-// Gemini API 代理，支持 OpenAI 格式适配。
-// 1. OpenAI 适配: 转换 '/v1/chat/completions' 请求。
-// 2. Gemini 代理: 透明转发其他所有请求。
+// 此路由会将请求代理到 Google Gemini API。
+// 它支持跨多个 API 密钥的负载均衡和智能重试。
 
 export const config = {
-  runtime: 'edge', // 启用 Edge Runtime 以获得最佳性能
+  runtime: 'edge', // 使用 Edge Runtime 以获得最佳性能
 };
 
 // --- OpenAI/Gemini 格式转换工具 ---
@@ -89,207 +88,99 @@ function createGeminiToOpenAIStream() {
 // --- 主处理函数 ---
 
 export default async function handler(request) {
-  const url = new URL(request.url);
-
-  // 路由 1: OpenAI 模型列表
-  if (url.pathname.endsWith('/v1/models')) {
-    console.log('接收到 OpenAI 模型列表请求，正在从 Google API 获取...');
-    try {
-      const modelsResponse = await fetchWithRetry('https://generativelanguage.googleapis.com/v1beta/models', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, request.headers);
-
-      if (!modelsResponse.ok) {
-        return modelsResponse; // 直接返回错误响应
-      }
-
-      const geminiModels = await modelsResponse.json();
-      const openAIModels = {
-        object: 'list',
-        data: geminiModels.models
-          .filter(m => m.supportedGenerationMethods.includes("generateContent"))
-          .map(m => ({
-            id: m.name.replace(/^models\//, ''),
-            object: 'model',
-            created: Date.now(),
-            owned_by: 'google',
-          })),
-      };
-
-      return new Response(JSON.stringify(openAIModels), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('获取模型列表时出错:', error);
-      return new Response(JSON.stringify({ error: '获取模型列表时出错: ' + error.message }), { status: 500 });
-    }
-  }
-
-  // 路由 2: OpenAI 格式适配
-  if (url.pathname.endsWith('/v1/chat/completions')) {
-    console.log('检测到 OpenAI 格式请求，启动适配模式。');
-    try {
-      const openAIRequestBody = await request.json();
-      const { contents, systemInstruction } = convertOpenAIMessagesToGemini(openAIRequestBody.messages);
-      
-      const model = openAIRequestBody.model?.includes('gemini') 
-        ? openAIRequestBody.model 
-        : 'gemini-1.5-flash';
-
-      const geminiRequestBody = {
-        contents,
-        systemInstruction,
-        generationConfig: {
-          temperature: openAIRequestBody.temperature,
-          maxOutputTokens: openAIRequestBody.max_tokens,
-          topP: openAIRequestBody.top_p,
-          stopSequences: typeof openAIRequestBody.stop === 'string' ? [openAIRequestBody.stop] : openAIRequestBody.stop,
-        },
-      };
-
-      const isStreaming = openAIRequestBody.stream === true;
-      const endpoint = isStreaming ? 'streamGenerateContent' : 'generateContent';
-      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?alt=sse`;
-      
-      const geminiResponse = await fetchWithRetry(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': request.headers.get('x-goog-api-key') || request.headers.get('authorization')?.split(' ')[1],
-        },
-        body: JSON.stringify(geminiRequestBody),
-      }, request.headers);
-
-      // 非流式响应转换
-      if (!isStreaming) {
-        const geminiJson = await geminiResponse.json();
-        const content = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const openAIResponse = {
-          id: `chatcmpl-${Date.now()}`,
-          object: 'chat.completion',
-          created: Math.floor(Date.now() / 1000),
-          model: 'gemini-adapted',
-          choices: [{
-            index: 0,
-            message: { role: 'assistant', content },
-            finish_reason: 'stop',
-          }],
-          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-        };
-        return new Response(JSON.stringify(openAIResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      // 流式响应转换
-      return new Response(geminiResponse.body.pipeThrough(createGeminiToOpenAIStream()), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-      });
-
-    } catch (error) {
-      console.error('OpenAI 适配器中发生错误:', error);
-      return new Response(JSON.stringify({ error: '适配器内部错误: ' + error.message }), { status: 500 });
-    }
-  }
-
-  // 路由 3: 原生 Gemini 透明代理 (默认)
-  console.log('原生 Gemini 代理模式。');
   try {
-    const pathname = url.pathname.replace(/^\/api/, '');
+    // 1. 从传入请求中获取路径和搜索参数。
+    const url = new URL(request.url);
+    const pathname = url.pathname.replace(/^\/api/, ''); // 移除 /api 前缀
+    
+    // 客户端可能会添加一个重复路径的 'path' 查询参数。
+    // 我们需要移除它以避免向目标 API 发送格式错误的 URL。
     const searchParams = new URLSearchParams(url.search);
     searchParams.delete('path');
     const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    const targetUrl = `https://generativelanguage.googleapis.com${pathname}${search}`;
 
+    console.log(`传入请求: ${url.pathname}${url.search}`);
+
+    // 2. 构建目标 Google Gemini API 的 URL。
+    const targetUrl = `https://generativelanguage.googleapis.com${pathname}${search}`;
     console.log(`目标 URL: ${targetUrl}`);
 
-    return await fetchWithRetry(targetUrl, {
-      method: request.method,
-      headers: {
-        'Content-Type': request.headers.get('content-type'),
-      },
-      body: request.body,
-      duplex: 'half',
-    }, request.headers);
+    // 3. 为出站请求创建新的请求头。
+    const headers = new Headers();
+    
+    // 从原始请求中复制 'Content-Type'。
+    if (request.headers.has('content-type')) {
+      headers.set('content-type', request.headers.get('content-type'));
+    }
 
-  } catch (error) {
-    console.error('原生代理处理程序中发生意外错误:', error);
-    return new Response('Internal Server Error', { status: 500 });
-  }
-}
+    // 4. 处理用于负载均衡和重试的 'x-goog-api-key'。
+    const apiKeyHeader = request.headers.get('x-goog-api-key');
+    if (!apiKeyHeader) {
+      return new Response(JSON.stringify({ error: "缺少 'x-goog-api-key' 请求头。" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
 
+    const apiKeys = apiKeyHeader.split(',').map(k => k.trim()).filter(k => k);
+    if (apiKeys.length === 0) {
+      return new Response(JSON.stringify({ error: "'x-goog-api-key' 请求头中未提供任何 API 密钥。" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
 
-/**
- * 带负载均衡和重试的 fetch。
- * @param {string} url 目标 URL
- * @param {object} options fetch 选项
- * @param {Headers} originalHeaders 原始请求头
- * @returns {Promise<Response>}
- */
-async function fetchWithRetry(url, options, originalHeaders) {
-  const apiKeyHeader = originalHeaders.get('x-goog-api-key') || originalHeaders.get('authorization')?.split(' ')[1];
-  if (!apiKeyHeader) {
-    return new Response(JSON.stringify({ error: "缺少 'x-goog-api-key' 或 'Authorization' 请求头。" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-  }
-
-  const apiKeys = apiKeyHeader.split(',').map(k => k.trim()).filter(k => k);
-  if (apiKeys.length === 0) {
-    return new Response(JSON.stringify({ error: "请求头中未提供任何有效的 API 密钥。" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-  }
-
-  // 随机打乱密钥以分配负载
-  for (let i = apiKeys.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [apiKeys[i], apiKeys[j]] = [apiKeys[j], apiKeys[i]];
-  }
+    // 随机打乱密钥以确保随机性并分配负载。
+    for (let i = apiKeys.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [apiKeys[i], apiKeys[j]] = [apiKeys[j], apiKeys[i]];
+    }
 
   let lastErrorBody = null;
   let lastStatus = 500;
 
-  for (const key of apiKeys) {
-    const requestOptions = { ...options };
-    requestOptions.headers = new Headers(options.headers);
-    requestOptions.headers.set('x-goog-api-key', key);
+    // 5. 遍历密钥并尝试请求，失败时重试。
+    for (const key of apiKeys) {
+      headers.set('x-goog-api-key', key);
+      console.log(`尝试使用密钥: ...${key.slice(-4)}`);
 
-    console.log(`尝试使用密钥: ...${key.slice(-4)}`);
+      try {
+        const response = await fetch(targetUrl, {
+          method: request.method,
+          headers: headers,
+          body: request.body,
+          duplex: 'half',
+        });
 
-    try {
-      const response = await fetch(url, requestOptions);
+        // 如果请求成功，立即返回响应。
+        if (response.ok) {
+          console.log(`使用密钥 ...${key.slice(-4)} 成功`);
+          return response;
+        }
 
-      if (response.ok) {
-        console.log(`使用密钥 ...${key.slice(-4)} 成功`);
+        // 如果错误与密钥相关 (4xx)，则存储错误并尝试下一个密钥。
+        if (response.status >= 400 && response.status < 500) {
+          console.warn(`密钥 ...${key.slice(-4)} 失败，状态码 ${response.status}。正在尝试下一个密钥。`);
+          lastErrorBody = await response.text();
+          lastStatus = response.status;
+          continue; // 尝试下一个密钥
+        }
+        
+        // 对于与密钥无关的服务器错误 (5xx)，快速失败，因为这很可能是 Google 方面的问题。
+        console.error(`使用密钥 ...${key.slice(-4)} 发生不可重试的服务器错误: ${response.status}`);
         return response;
-      }
 
-      // 4xx 错误，继续尝试下一个密钥
-      if (response.status >= 400 && response.status < 500) {
-        console.warn(`密钥 ...${key.slice(-4)} 失败，状态码 ${response.status}。正在尝试下一个密钥。`);
-        lastErrorBody = await response.text();
-        lastStatus = response.status;
-        continue;
+      } catch (error) {
+        console.error(`使用密钥 ...${key.slice(-4)} 发生 Fetch 错误:`, error);
+        lastErrorBody = (error instanceof Error) ? error.message : String(error);
+        lastStatus = 500; // 网络错误是内部服务器错误
+        // 如果发生网络错误，则继续使用下一个密钥
       }
-      
-      // 5xx 错误，快速失败
-      console.error(`使用密钥 ...${key.slice(-4)} 发生不可重试的服务器错误: ${response.status}`);
-      return response;
-
-    } catch (error) {
-      console.error(`使用密钥 ...${key.slice(-4)} 发生 Fetch 错误:`, error);
-      lastErrorBody = (error instanceof Error) ? error.message : String(error);
-      lastStatus = 500;
     }
-  }
 
-  console.error("所有 API 密钥均失败。返回最后记录的错误。");
-  return new Response(lastErrorBody, { status: lastStatus });
+    // 如果所有密钥都失败了，则返回最后记录的错误。
+    console.error("所有 API 密钥均失败。返回最后记录的错误。");
+    return new Response(lastErrorBody, { status: lastStatus });
+
+  } catch (error) {
+    console.error('代理处理程序中发生意外错误:', error);
+    if (error instanceof Error) {
+      console.error('错误详情:', error.message, error.stack);
+    }
+    return new Response('Internal Server Error', { status: 500 });
+  }
 }
