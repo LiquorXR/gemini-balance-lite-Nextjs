@@ -42,49 +42,49 @@ function convertOpenAIMessagesToGemini(messages) {
  * @returns {TransformStream}
  */
 function createGeminiToOpenAIStream() {
-  let buffer = '';
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
+  let buffer = '';
 
   return new TransformStream({
     transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
-      
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
 
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) {
-          continue;
-        }
+      // Process all complete SSE messages in the buffer
+      let eolIndex;
+      while ((eolIndex = buffer.indexOf('\n\n')) >= 0) {
+        const message = buffer.slice(0, eolIndex);
+        buffer = buffer.slice(eolIndex + 2);
 
-        const data = line.substring(6);
-        
-        if (data.trim() === '[DONE]') {
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          return;
-        }
+        if (message.startsWith('data: ')) {
+          const data = message.substring(6).trim();
 
-        try {
-          const geminiChunk = JSON.parse(data);
-          const text = geminiChunk?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          
-          if (text) {
-            const openAIChunk = {
-              id: `chatcmpl-${Date.now()}`,
-              object: 'chat.completion.chunk',
-              created: Math.floor(Date.now() / 1000),
-              model: 'gemini-adapted',
-              choices: [{
-                index: 0,
-                delta: { content: text },
-                finish_reason: null,
-              }],
-            };
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+          if (data === '[DONE]') {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            return;
           }
-        } catch (e) {
-          // 忽略不完整的JSON
+
+          try {
+            const geminiChunk = JSON.parse(data);
+            const text = geminiChunk?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+            if (text) {
+              const openAIChunk = {
+                id: `chatcmpl-${Date.now()}`,
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: 'gemini-adapted',
+                choices: [{
+                  index: 0,
+                  delta: { content: text },
+                  finish_reason: null,
+                }],
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+            }
+          } catch (e) {
+            console.error('Error parsing JSON in transform stream:', e);
+          }
         }
       }
     },
