@@ -8,6 +8,7 @@
 本项目是一个为 Google Gemini API 设计的代理服务，基于 Next.js 构建，并已为 Vercel 平台优化。它可以帮助您：
 - **中转 API 请求**: 在无法直连 Google API 的网络环境中，提供稳定的中转服务。
 - **实现负载均衡**: 通过聚合多个 Gemini API Key，并在每次请求时随机选用一个，从而有效分摊请求压力，突破免费额度限制。
+- **兼容 OpenAI 格式**: 智能识别并转换 OpenAI API 格式的请求，让您可以无缝对接 LobeChat、One API 等广受欢迎的第三方工具生态。
 
 ## Vercel 部署 (推荐)
 
@@ -36,10 +37,12 @@
 前往 [Google AI Studio](https://aistudio.google.com) 申请一个或多个免费的 Gemini API Key。
 
 #### 3. 配置客户端
-将您的代理地址和 API Key 填入任意支持 Gemini 的 AI 客户端即可。
+将您的代理地址和 API Key 填入任意支持 Gemini 或 OpenAI 格式的 AI 客户端即可。
 
--   **API 端点**: `https://<你的自定义域名>/api`
--   **API 密钥**: 填入您的 Gemini API Key。如果有多个，请用英文逗号 `,` 分隔。
+-   **API 端点 / Base URL**: `https://<你的自定义域名>/api`
+-   **API 密钥**: 填入您的 **Gemini API Key**。
+    -   对于原生 Gemini 客户端，请将密钥填入对应的字段，多个密钥可用英文逗号 `,` 分隔。
+    -   对于 OpenAI 格式的客户端，请在 `API Key` 字段中填入**单个** Gemini API Key (通常以 `Bearer ` 前缀的形式，但大部分客户端会自动处理)。
 
 
 ## 本地调试

@@ -8,6 +8,7 @@
 This project is a proxy service for the Google Gemini API, built with Next.js and optimized for the Vercel platform. It helps you to:
 - **Proxy API Requests**: Provides a stable relay service in network environments where direct access to Google APIs is restricted.
 - **Achieve Load Balancing**: By aggregating multiple Gemini API Keys and randomly selecting one for each request, it effectively distributes the request load, allowing you to overcome free-tier rate limits.
+- **OpenAI API Compatibility**: Intelligently recognizes and converts requests from the OpenAI API format, allowing you to seamlessly connect with the vast ecosystem of third-party tools like LobeChat, One API, and more.
 
 ## Deploy on Vercel (Recommended)
 
@@ -36,10 +37,12 @@ The project's homepage will automatically generate the currently available proxy
 Go to [Google AI Studio](https://aistudio.google.com) to obtain one or more free Gemini API Keys.
 
 #### 3. Configure Your Client
-Enter your proxy endpoint and API key(s) into any Gemini-compatible AI client.
+Enter your proxy endpoint and API key(s) into any AI client that supports either the Gemini or OpenAI format.
 
--   **API Endpoint**: `https://<your-custom-domain>/api`
--   **API Key**: Your Gemini API Key. If you have multiple keys, separate them with a comma `,`.
+-   **API Endpoint / Base URL**: `https://<your-custom-domain>/api`
+-   **API Key**: Your **Gemini API Key**.
+    -   For native Gemini clients, enter your key(s) in the appropriate field. Multiple keys can be separated by a comma `,`.
+    -   For OpenAI-format clients, enter a **single** Gemini API Key in the `API Key` field (often as a `Bearer` token, which most clients handle automatically).
 
 ## Local Development
 
